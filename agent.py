@@ -86,6 +86,32 @@ def receive_state():
     _update_local_game_from_post(data)
     return jsonify({"status": "state received"}), 200
 
+# --- Simple Heuristic Fallback ---
+def heuristic_fallback(my_trail, other_trail, board_grid, current_dir):
+    dir_map = ["UP", "DOWN", "LEFT", "RIGHT"]
+    moves = {
+        "UP":    (-1, 0),
+        "DOWN":  (1, 0),
+        "LEFT":  (0, -1),
+        "RIGHT": (0, 1)
+    }
+    row, col = my_trail[-1]
+    safe_dirs = []
+    height, width = len(board_grid), len(board_grid[0])
+    for d in dir_map:
+        dr, dc = moves[d]
+        nr = (row + dr) % height  # handle wrap-around
+        nc = (col + dc) % width
+        if board_grid[nr][nc] == 0 and (nr, nc) not in my_trail and (nr, nc) not in other_trail:
+            safe_dirs.append(d)
+    # Prioritize continuing in same direction
+    if current_dir in safe_dirs:
+        return current_dir
+    elif safe_dirs:
+        return safe_dirs[0]
+    else:
+        return "RIGHT"  # No safe move: try to go right anyway
+
 # --- Move Decision Logic ---
 @app.route("/send-move", methods=["GET"])
 def send_move():
@@ -121,10 +147,11 @@ def send_move():
         next_pos = pathfinder.get_next_position(tuple(my_trail[-1]), direction)
         is_safe = pathfinder.is_safe_position(next_pos, my_trail, other_trail)
         if not is_safe:
-            move = direction  # fallback is just direction (could improve)
+            move = heuristic_fallback(my_trail, other_trail, GLOBAL_GAME.board.grid, current_dir)
+ # fallback is just direction (could improve)
     except Exception as e:
         print(f"PyTorch error: {e}")
-        move = "RIGHT"  # fallback if model errors
+        move = heuristic_fallback(my_trail, other_trail, GLOBAL_GAME.board.grid, current_dir) # fallback if model errors
     # --- END OF YOUR CODE ---
     return jsonify({"move": move}), 200
 
