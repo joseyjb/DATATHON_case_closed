@@ -1,0 +1,8 @@
+Flask==3.0.0
+requests==2.31.0
+torch>=2.0.0
+numpy>=1.24.0
+
+# Note: Install PyTorch CPU-only version to stay under 5GB Docker limit
+# Use this command:
+# pip install torch --index-url https://download.pytorch.org/whl/cpu
